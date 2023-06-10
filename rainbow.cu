@@ -19,6 +19,11 @@ typedef struct {
   bool intersects;
 } intersection_t;
 
+/* Converts the wavelength in nm to the refractive index of the material, in
+ * this case water-air */
+__device__ double wavelengthToRefraction(double wavelength) {
+  return 1.31477 + 0.0108148 / (log10(0.00690246 * wavelength));
+}
 int main() {
   char a[N] = "Hello \0\0\0\0\0\0";
   int b[N] = {15, 10, 6, 0, -11, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
