@@ -9,6 +9,9 @@ int main() {
   char a[N] = "Hello \0\0\0\0\0\0";
   int b[N] = {15, 10, 6, 0, -11, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+  float3 *world;
+  (void)world;
+
   char *ad;
   int *bd;
   const int csize = N * sizeof(char);
