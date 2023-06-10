@@ -81,6 +81,75 @@ the normal vector must actually be normalzied for optimal results */
 __device__ float3 reflect(float3 I, float3 N) {
   return I - 2 * dot(normalize(N), I) * normalize(N);
 }
+
+/* Calculates the intersections between a sphere and a radius, if there is
+ * any*/
+__device__ intersection_t vectorSphereIntersection(sphere_t s, light_t l) {
+  /* Given the sphere's center coordinates and radius, and the radius's
+   coordinates and direction, we calculate the intersection point:
+   (x - s.x)^2 + (y - s.y)^2 + (z - s.z)^2 = s.r^2
+   Where `x` is l.coord.x + t * l.dir.x, `y` is l.coord.y + t * l.dir.y,
+   `z` is l.coord.z + t * l.dir.z (parametric equation, t is the parameter)
+   We then solve for t, and use
+   the discriminant to determine if there is an intersection or not.
+
+   The fully expanded eqaution is:
+   (l.dir.x^2 + l.dir.y^2 + l.dir.z^2) * t^2 +
+   2 * (l.dir.x * (l.coord.x - s.coord.x) + l.dir.y * (l.coord.y - s.coord.y) +
+   l.dir.z * (l.coord.z - s.coord.z)) * t +
+   (l.coord.x - c.x)^2 + (l.coord.y - c.y)^2 + (l.coord.z - c.z)^2 - r^2 = 0 */
+
+  // a = l.dir.x^2 + l.dir.y^2 + l.dir.z^2
+  float a = pow(l.dir.x, 2) + pow(l.dir.y, 2) + pow(l.dir.z, 2);
+
+  /* b = 2 * (l.dir.x * (l.coord.x - s.coord.x) +
+  l.dir.y * (l.coord.y - s.coord.y) + l.dir.z * (l.coord.z - s.coord.z)) */
+  float b = 2 * (l.dir.x * (l.coord.x - s.coord.x) +
+                 l.dir.y * (l.coord.y - s.coord.y) +
+                 l.dir.z * (l.coord.z - s.coord.z));
+
+  // c = (l.coord.x - c.x)^2 + (l.coord.y - c.y)^2 + (l.coord.z - c.z)^2 - r^2
+  float c = pow((l.coord.x - s.coord.x), 2) + pow((l.coord.y - s.coord.y), 2) +
+            pow((l.coord.z - s.coord.z), 2) - pow(s.r, 2);
+
+  // discriminant = b^2 - 4 * a * c
+  float d = pow(b, 2) - 4 * a * c;
+
+  // If the discriminant is negative, there is no solution
+  intersection_t i;
+  if (d < 0) {
+    i.intersects = false;
+    return i;
+  }
+
+  float t1 = (-1 * b + sqrt(d)) / (2 * a);
+  float t2 = (-1 * b - sqrt(d)) / (2 * a);
+
+  float t = 0;
+
+  // If t1 is positive, is smaller than t2 or t2 is negative, we use t1
+  // If t2 is positive, is smaller than t1 or t1 is negative, we use t2
+  // If both are negative, there is no intersection
+  if (0 < t1 && (t1 < t2 || t2 <= 0)) {
+    i.intersects = true;
+    t = t1;
+  } else if (0 < t2 && (t2 < t1 || t1 <= 0)) {
+    i.intersects = true;
+    t = t2;
+  } else {
+    i.intersects = false;
+  }
+
+  if (i.intersects) {
+    i.l = {l.coord.x + t * l.dir.x,
+           l.coord.y + t * l.dir.y,
+           l.coord.z + t * l.dir.z,
+           l.dir.x,
+           l.dir.y,
+           l.dir.z};
+  }
+
+  return i;
 }
 
 /* Calculates the normal vector for a sphere and intersection point */
