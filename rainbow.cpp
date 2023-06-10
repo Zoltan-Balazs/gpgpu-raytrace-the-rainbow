@@ -2,7 +2,11 @@
 #include <cmath>
 #include <iostream>
 
-const int blocksize = 16;
+typedef struct {
+  float x;
+  float y;
+  float z;
+} float3;
 
 typedef struct {
   float3 coord;
@@ -21,50 +25,51 @@ typedef struct {
 } intersection_t;
 
 /* Calculates the dot product of two 3D vectors */
-__device__ float dot(float3 lhs, float3 rhs) {
+float dot(float3 lhs, float3 rhs) {
   return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
 }
 
 /* Multiply a 3D vector by a scalar */
-__device__ float3 operator*(float3 vec, float scalar) {
+float3 operator*(float3 vec, float scalar) {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
-__device__ float3 operator*(float scalar, float3 vec) {
+float3 operator*(float scalar, float3 vec) {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
 /* Subtract two 3D vectors */
-__device__ float3 operator-(float3 lhs, float3 rhs) {
+float3 operator-(float3 lhs, float3 rhs) {
   return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
 }
 
 /* Normalize a 3D vector */
-__device__ float3 normalize(float3 v) {
-  float magnitude = sqrt(pow(v.x, 2) + pow(v.y, 2) + pow(v.z, 2));
+float3 normalize(float3 v) {
+  float magnitude =
+      std::sqrt(std::pow(v.x, 2) + std::pow(v.y, 2) + std::pow(v.z, 2));
   return {v.x / magnitude, v.y / magnitude, v.z / magnitude};
 }
 
 /* Converts the wavelength in nm to the refractive index of the material, in
  * this case water-air */
-__device__ double wavelengthToRefraction(double wavelength) {
-  return 1.31477 + 0.0108148 / (log10(0.00690246 * wavelength));
+double wavelengthToRefraction(double wavelength) {
+  return 1.31477 + 0.0108148 / (std::log10(0.00690246 * wavelength));
 }
 
 /* Checks if the given point is in the sphere */
-__device__ bool inSphere(sphere_t sphere, float3 coord) {
+bool inSphere(sphere_t sphere, float3 coord) {
   double epsilon = 0.0001;
 
-  return abs((sphere.r * sphere.r) - (pow((coord.x - sphere.coord.x), 2) +
-                                      pow((coord.y - sphere.coord.y), 2) +
-                                      pow((coord.z - sphere.coord.z), 2))) <=
-         epsilon;
+  return std::abs((sphere.r * sphere.r) -
+                  (std::pow((coord.x - sphere.coord.x), 2) +
+                   std::pow((coord.y - sphere.coord.y), 2) +
+                   std::pow((coord.z - sphere.coord.z), 2))) <= epsilon;
 }
 
 /* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/refract.xhtml
 Given a normal vector, an incident vector, and a
 wavelength, calculates the refracted vector */
-__device__ float3 refract(float3 N, float3 I, double wavelength) {
+float3 refract(float3 N, float3 I, double wavelength) {
   float eta = wavelengthToRefraction(wavelength);
   eta = 1.0 / eta;
   float k = 1.0 - eta * eta * (1.0 - dot(N, I) * dot(N, I));
@@ -73,19 +78,19 @@ __device__ float3 refract(float3 N, float3 I, double wavelength) {
     return {0, 0, 0};
   }
 
-  return eta * I - N * (eta * dot(N, I) + sqrt(k));
+  return eta * I - N * (eta * dot(N, I) + std::sqrt(k));
 }
 
 /* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/reflect.xhtml
 Given an incident vector and a normal vector, calculates the reflected vector,
 the normal vector must actually be normalzied for optimal results */
-__device__ float3 reflect(float3 I, float3 N) {
+float3 reflect(float3 I, float3 N) {
   return I - 2 * dot(normalize(N), I) * normalize(N);
 }
 
 /* Calculates the intersections between a sphere and a radius, if there is
  * any*/
-__device__ intersection_t vectorSphereIntersection(sphere_t s, light_t l) {
+intersection_t vectorSphereIntersection(sphere_t s, light_t l) {
   /* Given the sphere's center coordinates and radius, and the radius's
    coordinates and direction, we calculate the intersection point:
    (x - s.x)^2 + (y - s.y)^2 + (z - s.z)^2 = s.r^2
@@ -101,7 +106,7 @@ __device__ intersection_t vectorSphereIntersection(sphere_t s, light_t l) {
    (l.coord.x - c.x)^2 + (l.coord.y - c.y)^2 + (l.coord.z - c.z)^2 - r^2 = 0 */
 
   // a = l.dir.x^2 + l.dir.y^2 + l.dir.z^2
-  float a = pow(l.dir.x, 2) + pow(l.dir.y, 2) + pow(l.dir.z, 2);
+  float a = std::pow(l.dir.x, 2) + std::pow(l.dir.y, 2) + std::pow(l.dir.z, 2);
 
   /* b = 2 * (l.dir.x * (l.coord.x - s.coord.x) +
   l.dir.y * (l.coord.y - s.coord.y) + l.dir.z * (l.coord.z - s.coord.z)) */
@@ -110,11 +115,12 @@ __device__ intersection_t vectorSphereIntersection(sphere_t s, light_t l) {
                  l.dir.z * (l.coord.z - s.coord.z));
 
   // c = (l.coord.x - c.x)^2 + (l.coord.y - c.y)^2 + (l.coord.z - c.z)^2 - r^2
-  float c = pow((l.coord.x - s.coord.x), 2) + pow((l.coord.y - s.coord.y), 2) +
-            pow((l.coord.z - s.coord.z), 2) - pow(s.r, 2);
+  float c = std::pow((l.coord.x - s.coord.x), 2) +
+            std::pow((l.coord.y - s.coord.y), 2) +
+            std::pow((l.coord.z - s.coord.z), 2) - std::pow(s.r, 2);
 
   // discriminant = b^2 - 4 * a * c
-  float d = pow(b, 2) - 4 * a * c;
+  float d = std::pow(b, 2) - 4 * a * c;
 
   // If the discriminant is negative, there is no solution
   intersection_t i;
@@ -123,8 +129,8 @@ __device__ intersection_t vectorSphereIntersection(sphere_t s, light_t l) {
     return i;
   }
 
-  float t1 = (-1 * b + sqrt(d)) / (2 * a);
-  float t2 = (-1 * b - sqrt(d)) / (2 * a);
+  float t1 = (-1 * b + std::sqrt(d)) / (2 * a);
+  float t2 = (-1 * b - std::sqrt(d)) / (2 * a);
 
   float t = 0;
 
@@ -154,7 +160,7 @@ __device__ intersection_t vectorSphereIntersection(sphere_t s, light_t l) {
 }
 
 /* Calculates the normal vector for a sphere and intersection point */
-__device__ float3 calculateNormalVector(sphere_t s, float3 i) {
+float3 calculateNormalVector(sphere_t s, float3 i) {
   /* Given a sphere and a point on the sphere's surface, calculate the
    * vector from the sphere's center to the intersection point */
   float3 vector = {i.x - s.coord.x, i.y - s.coord.y, i.z - s.coord.z};
@@ -164,13 +170,15 @@ __device__ float3 calculateNormalVector(sphere_t s, float3 i) {
 }
 
 /* Calculates the angle between two 3D vectors */
-__device__ float angleBetweenVectors(float3 lhs, float3 rhs) {
+float angleBetweenVectors(float3 lhs, float3 rhs) {
   /* Calculate the dot product of the vectors */
   float dotProduct = dot(lhs, rhs);
 
   /* Calculate the magnitudes of the vectors */
-  float magnL = sqrt(pow(lhs.x, 2) + pow(lhs.y, 2) + pow(lhs.z, 2));
-  float magnR = sqrt(pow(rhs.x, 2) + pow(rhs.y, 2) + pow(rhs.z, 2));
+  float magnL =
+      std::sqrt(std::pow(lhs.x, 2) + std::pow(lhs.y, 2) + std::pow(lhs.z, 2));
+  float magnR =
+      std::sqrt(std::pow(rhs.x, 2) + std::pow(rhs.y, 2) + std::pow(rhs.z, 2));
 
   /* Calculate the angle's cosine between the vectors */
   float cosA = dotProduct / (magnL * magnR);
@@ -179,7 +187,7 @@ __device__ float angleBetweenVectors(float3 lhs, float3 rhs) {
   return acos(cosA);
 }
 
-__global__ void test(sphere_t sphere, light_t light, float *returnVal) {
+float3 test(sphere_t sphere, light_t light) {
   intersection_t intersection = vectorSphereIntersection(sphere, light);
 
   int i = 0;
@@ -201,45 +209,18 @@ __global__ void test(sphere_t sphere, light_t light, float *returnVal) {
     intersection = vectorSphereIntersection(sphere, light);
   }
 
-  returnVal[0] = intersection.l.coord.x;
-  returnVal[1] = intersection.l.coord.y;
-  returnVal[2] = intersection.l.coord.z;
+  return intersection.l.coord;
 }
 
 int main() {
   sphere_t sphere = {{2, -2, 1}, 3};
 
-  dim3 dimBlock(blocksize, 1);
-  dim3 dimGrid(1, 1);
-
-  float *hostVal = 0;
-  float *val;
-
-  cudaError_t cudaError = cudaMalloc((void **)&val, 3 * sizeof(float));
-  if (cudaError != cudaSuccess) {
-    std::cout << "Error while allocating memory on GPU: "
-              << cudaGetErrorString(cudaError) << std::endl;
-    exit(1);
-  }
-
-  cudaError =
-      cudaHostAlloc((void **)&hostVal, 3 * sizeof(float), cudaHostAllocDefault);
-  if (cudaError != cudaSuccess) {
-    std::cout << "Error while allocating pinned memory: "
-              << cudaGetErrorString(cudaError) << std::endl;
-    exit(1);
-  }
-  cudaMemcpy(val, hostVal, 3 * sizeof(float), cudaMemcpyHostToDevice);
-
   auto tS = std::chrono::high_resolution_clock::now();
 
   for (int i = 380; i < 740; ++i) {
-    test<<<dimGrid, dimBlock>>>(sphere, {3, 2, -3, 0, -1, 1, (double)i}, val);
+    float3 res = test(sphere, {3, 2, -3, 0, -1, 1, (double)i});
 
-    cudaMemcpy(hostVal, val, 3 * sizeof(float), cudaMemcpyDeviceToHost);
-
-    std::cout << "(" << hostVal[0] << ", " << hostVal[1] << ", " << hostVal[2]
-              << ")\n";
+    std::cout << "(" << res.x << ", " << res.y << ", " << res.z << ")\n";
   }
 
   auto diff = std::chrono::high_resolution_clock::now() - tS;
