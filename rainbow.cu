@@ -8,6 +8,12 @@ typedef struct {
   float radius;
 } sphere_t;
 
+typedef struct {
+  float3 coordinates;
+  float3 direction;
+  double wavelength;
+} light_t;
+
 
 int main() {
   char a[N] = "Hello \0\0\0\0\0\0";
