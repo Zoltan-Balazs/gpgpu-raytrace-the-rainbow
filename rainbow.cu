@@ -44,9 +44,12 @@ __device__ float dot(float3 a, float3 b) {
 __device__ float3 operator*(float3 vec, float scalar) {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
-int main() {
-  char a[N] = "Hello \0\0\0\0\0\0";
-  int b[N] = {15, 10, 6, 0, -11, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+/* Subtract two float3 vectors */
+__device__ float3 operator-(float3 lhs, float3 rhs) {
+  return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
+}
+
 
   float3 *world;
   (void)world;
