@@ -19,6 +19,31 @@ typedef struct {
   bool intersects;
 } intersection_t;
 
+/* Calculates the dot product of two 3D vectors */
+__device__ float dot(float3 lhs, float3 rhs) {
+  return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+}
+
+/* Multiply a 3D vector by a scalar */
+__device__ float3 operator*(float3 vec, float scalar) {
+  return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
+}
+
+__device__ float3 operator*(float scalar, float3 vec) {
+  return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
+}
+
+/* Subtract two 3D vectors */
+__device__ float3 operator-(float3 lhs, float3 rhs) {
+  return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
+}
+
+/* Normalize a 3D vector */
+__device__ float3 normalize(float3 v) {
+  float magnitude = sqrt(pow(v.x, 2) + pow(v.y, 2) + pow(v.z, 2));
+  return {v.x / magnitude, v.y / magnitude, v.z / magnitude};
+}
+
 /* Converts the wavelength in nm to the refractive index of the material, in
  * this case water-air */
 __device__ double wavelengthToRefraction(double wavelength) {
@@ -49,9 +74,17 @@ __device__ float3 operator*(float scalar, float3 vec) {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
-/* Subtract two float3 vectors */
-__device__ float3 operator-(float3 lhs, float3 rhs) {
-  return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
+/* Calculates the normal vector for a sphere and intersection point */
+__device__ float3 calculateNormalVector(sphere_t sphere,
+                                        float3 intersectionPoint) {
+  /* Given a sphere and a point on the sphere's surface, calculate the
+   * vector from the sphere's center to the intersection point */
+  float3 vector = {intersectionPoint.x - sphere.coordinates.x,
+                   intersectionPoint.y - sphere.coordinates.y,
+                   intersectionPoint.z - sphere.coordinates.z};
+
+  /* Normalize the given vector */
+  return normalize(vector);
 }
 
 /* Calculates the angle between two 3D vectors */
