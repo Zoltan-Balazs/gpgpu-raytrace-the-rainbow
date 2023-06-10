@@ -60,18 +60,27 @@ __device__ bool inSphere(sphere_t sphere, float3 coordinate) {
               pow((coordinate.z - sphere.coordinates.z), 2))) <= epsilon;
 }
 
-/* Calculates the dot product of two 3D vectors */
-__device__ float dot(float3 lhs, float3 rhs) {
-  return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+/* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/refract.xhtml
+Given a normal vector, an incident vector, and a
+wavelength, calculates the refracted vector */
+__device__ float3 refract(float3 N, float3 I, double wavelength) {
+  float eta = wavelengthToRefraction(wavelength);
+  eta = 1.0 / eta;
+  float k = 1.0 - eta * eta * (1.0 - dot(N, I) * dot(N, I));
+
+  if (k < 0) {
+    return {0, 0, 0};
+  }
+
+  return eta * I - N * (eta * dot(N, I) + sqrt(k));
 }
 
-/* Multiply a 3D vector by a scalar */
-__device__ float3 operator*(float3 vec, float scalar) {
-  return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
+/* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/reflect.xhtml
+Given an incident vector and a normal vector, calculates the reflected vector,
+the normal vector must actually be normalzied for optimal results */
+__device__ float3 reflect(float3 I, float3 N) {
+  return I - 2 * dot(normalize(N), I) * normalize(N);
 }
-
-__device__ float3 operator*(float scalar, float3 vec) {
-  return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
 /* Calculates the normal vector for a sphere and intersection point */
