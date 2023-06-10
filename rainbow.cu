@@ -1,6 +1,7 @@
-#include <stdio.h>
+#include <chrono>
+#include <cmath>
+#include <iostream>
 
-const int N = 16;
 const int blocksize = 16;
 
 typedef struct {
@@ -178,48 +179,74 @@ __device__ float angleBetweenVectors(float3 lhs, float3 rhs) {
   return acos(cosA);
 }
 
-/* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/refract.xhtml
-Given a normal vector, an incident vector, and a
-wavelength, calculates the refracted vector */
-__device__ float3 refract(float3 N, float3 I, double wavelength) {
-  float eta = wavelengthToRefraction(wavelength);
-  eta = 1.0 / eta;
-  float k = 1.0 - eta * eta * (1.0 - dot(N, I) * dot(N, I));
+__global__ void test(sphere_t sphere, light_t light, float *returnVal) {
+  intersection_t intersection = vectorSphereIntersection(sphere, light);
 
-  if (k < 0) {
-    return {0, 0, 0};
+  int i = 0;
+  bool refraction = true;
+
+  for (i = 0; i < 4 && inSphere(sphere, intersection.l.coord) &&
+              intersection.intersects;
+       ++i) {
+    float3 normalVector = calculateNormalVector(sphere, intersection.l.coord);
+    float angle = angleBetweenVectors(light.dir, normalVector);
+    if (refraction) {
+      light.dir = refract(normalVector, intersection.l.dir, light.wavelength);
+      refraction = false;
+    } else {
+      light.dir = reflect(intersection.l.dir, normalVector);
+      refraction = true;
+    }
+    light.coord = intersection.l.coord;
+    intersection = vectorSphereIntersection(sphere, light);
   }
 
-  return eta * I - N * (eta * dot(N, I) + sqrt(k));
+  returnVal[0] = intersection.l.coord.x;
+  returnVal[1] = intersection.l.coord.y;
+  returnVal[2] = intersection.l.coord.z;
 }
 
-/* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/reflect.xhtml
-Given an incident vector and a normal vector, calculates the reflected vector,
-the normal vector must actually be normalzied for optimal results */
-__device__ float3 reflect(float3 I, float3 N) { return I - 2 * dot(N, I) * N; }
-
-  float3 *world;
-  (void)world;
-
-  char *ad;
-  int *bd;
-  const int csize = N * sizeof(char);
-  const int isize = N * sizeof(int);
-
-  printf("%s", a);
-
-  cudaMalloc((void **)&ad, csize);
-  cudaMalloc((void **)&bd, isize);
-  cudaMemcpy(ad, a, csize, cudaMemcpyHostToDevice);
-  cudaMemcpy(bd, b, isize, cudaMemcpyHostToDevice);
+int main() {
+  sphere_t sphere = {{2, -2, 1}, 3};
 
   dim3 dimBlock(blocksize, 1);
   dim3 dimGrid(1, 1);
-  hello<<<dimGrid, dimBlock>>>(ad, bd);
-  cudaMemcpy(a, ad, csize, cudaMemcpyDeviceToHost);
-  cudaFree(ad);
-  cudaFree(bd);
 
-  printf("%s\n", a);
+  float *hostVal = 0;
+  float *val;
+
+  cudaError_t cudaError = cudaMalloc((void **)&val, 3 * sizeof(float));
+  if (cudaError != cudaSuccess) {
+    std::cout << "Error while allocating memory on GPU: "
+              << cudaGetErrorString(cudaError) << std::endl;
+    exit(1);
+  }
+
+  cudaError =
+      cudaHostAlloc((void **)&hostVal, 3 * sizeof(float), cudaHostAllocDefault);
+  if (cudaError != cudaSuccess) {
+    std::cout << "Error while allocating pinned memory: "
+              << cudaGetErrorString(cudaError) << std::endl;
+    exit(1);
+  }
+  cudaMemcpy(val, hostVal, 3 * sizeof(float), cudaMemcpyHostToDevice);
+
+  auto tS = std::chrono::high_resolution_clock::now();
+
+  for (int i = 380; i < 740; ++i) {
+    test<<<dimGrid, dimBlock>>>(sphere, {3, 2, -3, 0, -1, 1, (double)i}, val);
+
+    cudaMemcpy(hostVal, val, 3 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    std::cout << "(" << hostVal[0] << ", " << hostVal[1] << ", " << hostVal[2]
+              << ")\n";
+  }
+
+  auto diff = std::chrono::high_resolution_clock::now() - tS;
+  std::cout << (ulong)std::chrono::duration_cast<std::chrono::microseconds>(
+                   diff)
+                   .count()
+            << std::endl;
+
   return EXIT_SUCCESS;
 }
