@@ -84,6 +84,12 @@ __device__ float3 refract(float3 N, float3 I, double wavelength) {
 
   return eta * I - N * (eta * dot(N, I) + sqrt(k));
 }
+
+/* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/reflect.xhtml
+Given an incident vector and a normal vector, calculates the reflected vector,
+the normal vector must actually be normalzied for optimal results */
+__device__ float3 reflect(float3 I, float3 N) { return I - 2 * dot(N, I) * N; }
+
   float3 *world;
   (void)world;
 
