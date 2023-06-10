@@ -4,18 +4,18 @@ const int N = 16;
 const int blocksize = 16;
 
 typedef struct {
-  float3 coordinates;
-  float radius;
+  float3 coord;
+  float r;
 } sphere_t;
 
 typedef struct {
-  float3 coordinates;
-  float3 direction;
+  float3 coord;
+  float3 dir;
   double wavelength;
 } light_t;
 
 typedef struct {
-  light_t light;
+  light_t l;
   bool intersects;
 } intersection_t;
 
@@ -51,13 +51,13 @@ __device__ double wavelengthToRefraction(double wavelength) {
 }
 
 /* Checks if the given point is in the sphere */
-__device__ bool inSphere(sphere_t sphere, float3 coordinate) {
+__device__ bool inSphere(sphere_t sphere, float3 coord) {
   double epsilon = 0.0001;
 
-  return abs((sphere.radius * sphere.radius) -
-             (pow((coordinate.x - sphere.coordinates.x), 2) +
-              pow((coordinate.y - sphere.coordinates.y), 2) +
-              pow((coordinate.z - sphere.coordinates.z), 2))) <= epsilon;
+  return abs((sphere.r * sphere.r) - (pow((coord.x - sphere.coord.x), 2) +
+                                      pow((coord.y - sphere.coord.y), 2) +
+                                      pow((coord.z - sphere.coord.z), 2))) <=
+         epsilon;
 }
 
 /* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/refract.xhtml
@@ -84,13 +84,10 @@ __device__ float3 reflect(float3 I, float3 N) {
 }
 
 /* Calculates the normal vector for a sphere and intersection point */
-__device__ float3 calculateNormalVector(sphere_t sphere,
-                                        float3 intersectionPoint) {
+__device__ float3 calculateNormalVector(sphere_t s, float3 i) {
   /* Given a sphere and a point on the sphere's surface, calculate the
    * vector from the sphere's center to the intersection point */
-  float3 vector = {intersectionPoint.x - sphere.coordinates.x,
-                   intersectionPoint.y - sphere.coordinates.y,
-                   intersectionPoint.z - sphere.coordinates.z};
+  float3 vector = {i.x - s.coord.x, i.y - s.coord.y, i.z - s.coord.z};
 
   /* Normalize the given vector */
   return normalize(vector);
