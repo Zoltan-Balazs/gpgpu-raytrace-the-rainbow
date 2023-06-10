@@ -24,6 +24,19 @@ typedef struct {
 __device__ double wavelengthToRefraction(double wavelength) {
   return 1.31477 + 0.0108148 / (log10(0.00690246 * wavelength));
 }
+
+/* Checks if the given point is in the sphere */
+__device__ bool inSphere(sphere_t sphere, float3 coordinate) {
+  double epsilon = 0.0001;
+
+  return abs((sphere.radius * sphere.radius) -
+             (pow((coordinate.x - sphere.coordinates.x), 2) +
+              pow((coordinate.y - sphere.coordinates.y), 2) +
+              pow((coordinate.z - sphere.coordinates.z), 2))) <= epsilon;
+}
+
+}
+
 int main() {
   char a[N] = "Hello \0\0\0\0\0\0";
   int b[N] = {15, 10, 6, 0, -11, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
