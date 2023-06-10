@@ -40,6 +40,10 @@ __device__ float dot(float3 a, float3 b) {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+/* Multiply a 3D vector by a scalar */
+__device__ float3 operator*(float3 vec, float scalar) {
+  return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
+}
 int main() {
   char a[N] = "Hello \0\0\0\0\0\0";
   int b[N] = {15, 10, 6, 0, -11, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
