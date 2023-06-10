@@ -3,7 +3,11 @@
 const int N = 16;
 const int blocksize = 16;
 
-__global__ void hello(char *a, int *b) { a[threadIdx.x] += b[threadIdx.x]; }
+typedef struct {
+  float3 coordinates;
+  float radius;
+} sphere_t;
+
 
 int main() {
   char a[N] = "Hello \0\0\0\0\0\0";
