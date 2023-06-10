@@ -36,8 +36,8 @@ __device__ bool inSphere(sphere_t sphere, float3 coordinate) {
 }
 
 /* Calculates the dot product of two 3D vectors */
-__device__ float dot(float3 a, float3 b) {
-  return a.x * b.x + a.y * b.y + a.z * b.z;
+__device__ float dot(float3 lhs, float3 rhs) {
+  return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
 }
 
 /* Multiply a 3D vector by a scalar */
