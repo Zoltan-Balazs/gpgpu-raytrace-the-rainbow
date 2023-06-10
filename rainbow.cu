@@ -14,6 +14,10 @@ typedef struct {
   double wavelength;
 } light_t;
 
+typedef struct {
+  light_t light;
+  bool intersects;
+} intersection_t;
 
 int main() {
   char a[N] = "Hello \0\0\0\0\0\0";
