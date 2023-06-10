@@ -45,6 +45,10 @@ __device__ float3 operator*(float3 vec, float scalar) {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
+__device__ float3 operator*(float scalar, float3 vec) {
+  return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
+}
+
 /* Subtract two float3 vectors */
 __device__ float3 operator-(float3 lhs, float3 rhs) {
   return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
@@ -66,6 +70,20 @@ __device__ float angleBetweenVectors(float3 lhs, float3 rhs) {
   return acos(cosA);
 }
 
+/* Based on https://registry.khronos.org/OpenGL-Refpages/gl4/html/refract.xhtml
+Given a normal vector, an incident vector, and a
+wavelength, calculates the refracted vector */
+__device__ float3 refract(float3 N, float3 I, double wavelength) {
+  float eta = wavelengthToRefraction(wavelength);
+  eta = 1.0 / eta;
+  float k = 1.0 - eta * eta * (1.0 - dot(N, I) * dot(N, I));
+
+  if (k < 0) {
+    return {0, 0, 0};
+  }
+
+  return eta * I - N * (eta * dot(N, I) + sqrt(k));
+}
   float3 *world;
   (void)world;
 
