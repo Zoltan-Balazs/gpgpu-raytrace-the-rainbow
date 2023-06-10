@@ -50,6 +50,21 @@ __device__ float3 operator-(float3 lhs, float3 rhs) {
   return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
 }
 
+/* Calculates the angle between two 3D vectors */
+__device__ float angleBetweenVectors(float3 lhs, float3 rhs) {
+  /* Calculate the dot product of the vectors */
+  float dotProduct = dot(lhs, rhs);
+
+  /* Calculate the magnitudes of the vectors */
+  float magnL = sqrt(pow(lhs.x, 2) + pow(lhs.y, 2) + pow(lhs.z, 2));
+  float magnR = sqrt(pow(rhs.x, 2) + pow(rhs.y, 2) + pow(rhs.z, 2));
+
+  /* Calculate the angle's cosine between the vectors */
+  float cosA = dotProduct / (magnL * magnR);
+
+  /* Return the radians in degrees of the angle between the vectors */
+  return acos(cosA);
+}
 
   float3 *world;
   (void)world;
