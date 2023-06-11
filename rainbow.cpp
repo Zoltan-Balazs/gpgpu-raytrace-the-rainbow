@@ -198,40 +198,58 @@ double angleBetweenVectors(double3 lhs, double3 rhs) {
   return acos(cosA);
 }
 
-float3 test(sphere_t sphere, light_t light) {
+light_t rainbowAirWater(double wavelength) {
+  sphere_t sphere = {{2, -2, 1}, 3};
+  light_t light = {3, 2, -3, 0, -1, 1, wavelength};
+
   intersection_t intersection = vectorSphereIntersection(sphere, light);
 
-  int i = 0;
   bool refraction = true;
+  bool inWater = false;
 
-  for (i = 0; i < 4 && inSphere(sphere, intersection.l.coord) &&
-              intersection.intersects;
+  for (int i = 0; i < 4 && inSphere(sphere, intersection.l.coord) &&
+                  intersection.intersects;
        ++i) {
-    float3 normalVector = calculateNormalVector(sphere, intersection.l.coord);
-    float angle = angleBetweenVectors(light.dir, normalVector);
+    double3 normalVector = calculateNormalVector(sphere, intersection.l.coord);
+    float angle = clamp(
+        angleBetweenVectors(light.dir, intersection.l.coord + normalVector), 0,
+        M_PI / 2);
+
+    double3 newVector;
     if (refraction) {
-      light.dir = refract(normalVector, intersection.l.dir, light.wavelength);
+      if (inWater) {
+        normalVector = -1 * normalVector;
+      }
+
+      newVector =
+          refract(normalVector, intersection.l.dir, light.wavelength, inWater);
+      inWater = true;
       refraction = false;
     } else {
-      light.dir = reflect(intersection.l.dir, normalVector);
+      newVector = reflect(intersection.l.dir, -1 * normalVector);
       refraction = true;
     }
-    light.coord = intersection.l.coord;
+    light = {intersection.l.coord, newVector, light.wavelength};
     intersection = vectorSphereIntersection(sphere, light);
   }
 
-  return intersection.l.coord;
+  return light;
+}
 }
 
 int main() {
-  sphere_t sphere = {{2, -2, 1}, 3};
+  const int WAVELENGTHS = 680 - 380;
+  double wavelength[WAVELENGTHS];
+  for (int i = 0; i < WAVELENGTHS; ++i) {
+    wavelength[i] = 380 + i;
+  }
+
+  light_t results[WAVELENGTHS];
 
   auto tS = std::chrono::high_resolution_clock::now();
 
-  for (int i = 380; i < 740; ++i) {
-    float3 res = test(sphere, {3, 2, -3, 0, -1, 1, (double)i});
-
-    std::cout << "(" << res.x << ", " << res.y << ", " << res.z << ")\n";
+  for (int i = 380; i < 680; ++i) {
+    results[i - 380] = rainbowAirWater(wavelength[i - 380]);
   }
 
   auto diff = std::chrono::high_resolution_clock::now() - tS;
@@ -239,6 +257,14 @@ int main() {
                    diff)
                    .count()
             << std::endl;
+
+  // for (int i = 0; i < WAVELENGTHS; ++i) {
+  //   std::cout << results[i].wavelength << "nm (" << results[i].coord.x << ","
+  //             << results[i].coord.y << ", " << results[i].coord.z << ") "
+  //             << " -> "
+  //             << "(" << results[i].dir.x << ", " << results[i].dir.y << ", "
+  //             << results[i].dir.z << ")" << std::endl;
+  // }
 
   return EXIT_SUCCESS;
 }
