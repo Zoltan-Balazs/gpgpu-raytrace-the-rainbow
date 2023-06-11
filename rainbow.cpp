@@ -55,6 +55,11 @@ double3 normalize(double3 v) {
   return {v.x / magnitude, v.y / magnitude, v.z / magnitude};
 }
 
+/* Clamps a float between two values */
+double clamp(double val, double lower, double upper) {
+  return std::max(lower, std::min(val, upper));
+}
+
 /* Converts the wavelength in nm to the refractive index of the material, in
  * this case water-air */
 double wavelengthToRefraction(double wavelength) {
