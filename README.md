@@ -4,9 +4,18 @@ My solution for the the [Raytrace the rainbow on the GPU](https://docs.google.co
 
 ## Prerequisities
 
+The following dependencies are required:
+
 - CUDA (Tested with 12.1, should work on older versions as well)
 - C++17
 - CMake 3.26
+- [https://github.com/nothings/stb/blob/master/stb_image_write.h](https://github.com/nothings/stb/blob/master/stb_image_write.h)
+
+Installation of these files can be done with the following command on Arch Linux:
+
+```
+sudo pacman -S --needed base-devel cuda cmake
+```
 
 ## How to build
 
