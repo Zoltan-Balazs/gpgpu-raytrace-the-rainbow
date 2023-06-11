@@ -43,6 +43,11 @@ __device__ double3 normalize(double3 v) {
   return {v.x / magnitude, v.y / magnitude, v.z / magnitude};
 }
 
+/* Clamps a float between two values */
+__device__ double clamp(double val, double lower, double upper) {
+  return max(lower, min(val, upper));
+}
+
 /* Converts the wavelength in nm to the refractive index of the material, in
  * this case water-air */
 __device__ double wavelengthToRefraction(double wavelength) {
