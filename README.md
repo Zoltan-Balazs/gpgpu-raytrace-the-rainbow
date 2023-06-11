@@ -34,6 +34,13 @@ Switch over to the `cpu-cpp` branch and copy over the `CMakeLists.txt` file or c
 - 12 set_target_properties(gpgpu_raytrace_rainbow PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 ```
 
+## Image display
+
+Running the GPU implementation results in a picture called `rainbow.png` to be placed alongside the source files.
+This image is a slice of the simulated world at `z = -3`, with x having a range of `-1.90` to `-2.00` and y having a range of `1.9` to `2.1`.
+The explanation of these specific values are, that given the sphere (`(x - 2)^2 + (y + 2)^2 + (z - 1)^2 = 9`, so a center of `(2, -2, 1)` and a radius of `3`) and the initial light (`(3, 2, -3) + t * (0, -1, 1)`, so an initial position of `(3, 2, -3)` with a direction vector of `(0, -1, 1)`) after refraction, reflection & refraction results in these specific values that intersect the `z = -3` plane at a range from `-1.94345` (Ultraviolet light) to `-1.99114` (Red light).
+
+For a more visual representation about the text, check out the following GeoGebra link: [https://www.geogebra.org/m/awdhpswq](https://www.geogebra.org/m/awdhpswq)
 
 ## Benchmarks & Optimizations
 
