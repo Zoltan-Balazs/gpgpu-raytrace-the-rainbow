@@ -235,6 +235,64 @@ light_t rainbowAirWater(double wavelength) {
 
   return light;
 }
+
+int *wavelengthToRGB(double wavelength) {
+  double gamma = 0.80;
+  double intensityMax = 255;
+
+  double factor;
+  double3 curr_rgb;
+
+  if ((wavelength >= 380) && (wavelength < 440)) {
+    curr_rgb.x = -(wavelength - 440) / (440 - 380);
+    curr_rgb.y = 0.0;
+    curr_rgb.z = 1.0;
+  } else if ((wavelength >= 440) && (wavelength < 490)) {
+    curr_rgb.x = 0.0;
+    curr_rgb.y = (wavelength - 440) / (490 - 440);
+    curr_rgb.z = 1.0;
+  } else if ((wavelength >= 490) && (wavelength < 510)) {
+    curr_rgb.x = 0.0;
+    curr_rgb.y = 1.0;
+    curr_rgb.z = -(wavelength - 510) / (510 - 490);
+  } else if ((wavelength >= 510) && (wavelength < 580)) {
+    curr_rgb.x = (wavelength - 510) / (580 - 510);
+    curr_rgb.y = 1.0;
+    curr_rgb.z = 0.0;
+  } else if ((wavelength >= 580) && (wavelength < 645)) {
+    curr_rgb.x = 1.0;
+    curr_rgb.y = -(wavelength - 645) / (645 - 580);
+    curr_rgb.z = 0.0;
+  } else if ((wavelength >= 645) && (wavelength < 781)) {
+    curr_rgb.x = 1.0;
+    curr_rgb.y = 0.0;
+    curr_rgb.z = 0.0;
+  } else {
+    curr_rgb.x = 0.0;
+    curr_rgb.y = 0.0;
+    curr_rgb.z = 0.0;
+  }
+
+  if ((wavelength >= 380) && (wavelength < 420)) {
+    factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+  } else if ((wavelength >= 420) && (wavelength < 701)) {
+    factor = 1.0;
+  } else if ((wavelength >= 701) && (wavelength < 781)) {
+    factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 700);
+  } else {
+    factor = 0.0;
+  }
+
+  return new int[3]{
+      curr_rgb.x == 0
+          ? 0
+          : (int)round(intensityMax * pow(curr_rgb.x * factor, gamma)),
+      curr_rgb.y == 0
+          ? 0
+          : (int)round(intensityMax * pow(curr_rgb.y * factor, gamma)),
+      curr_rgb.z == 0
+          ? 0
+          : (int)round(intensityMax * pow(curr_rgb.z * factor, gamma))};
 }
 
 int main() {
