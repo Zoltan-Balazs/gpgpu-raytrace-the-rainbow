@@ -37,6 +37,11 @@ __device__ double3 operator-(double3 lhs, double3 rhs) {
   return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
 }
 
+/* Add two 3D vectors */
+__device__ double3 operator+(double3 lhs, double3 rhs) {
+  return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
+}
+
 /* Normalize a 3D vector */
 __device__ double3 normalize(double3 v) {
   double magnitude = sqrt(pow(v.x, 2) + pow(v.y, 2) + pow(v.z, 2));
