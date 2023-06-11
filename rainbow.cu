@@ -1,9 +1,11 @@
+#include <cstdlib>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #include <chrono>
 #include <cmath>
 #include <iostream>
 
-const int blocksize = 16;
-
+#define CHANNEL_NUM 3
 typedef struct {
   double3 coord;
   double r;
@@ -376,6 +378,24 @@ int main() {
   // }
 
   wavelengthToRGB<<<block_size, grid_size>>>(gpu_wavelength, cpu_rgb);
+
+  unsigned char *pixels =
+      new unsigned char[WAVELENGTHS * WAVELENGTHS * CHANNEL_NUM];
+  memset(pixels, 255,
+         WAVELENGTHS * WAVELENGTHS * CHANNEL_NUM * sizeof(unsigned char));
+
+  int idx = 0;
+  for (int i = 0; i < WAVELENGTHS; ++i) {
+    for (int j = 0; j < WAVELENGTHS; ++j) {
+      pixels[idx++] = cpu_rgb[j].x;
+      pixels[idx++] = cpu_rgb[j].y;
+      pixels[idx++] = cpu_rgb[j].z;
+    }
+  }
+
+  stbi_write_png("rainbow.png", WAVELENGTHS, WAVELENGTHS, CHANNEL_NUM, pixels,
+                 WAVELENGTHS * CHANNEL_NUM);
+
   cudaFreeHost(cpu_rgb);
   cudaFreeHost(cpu_results);
   cudaFreeHost(gpu_wavelength);
