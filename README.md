@@ -33,3 +33,20 @@ Switch over to the `cpu-cpp` branch and copy over the `CMakeLists.txt` file or c
 ...
 - 12 set_target_properties(gpgpu_raytrace_rainbow PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 ```
+
+
+## Benchmarks & Optimizations
+
+The following table shows the time it takes on different hardware to calculate the refraction & reflection of 300 light vectors (380 nm to 680 nm)
+
+| Hardware              	| Execution time 	| Notes                                        	|
+|-----------------------	|----------------	|----------------------------------------------	|
+| CPU (Single Threaded) 	| 835 μs         	| g++, no debug symbols, simple for loop       	|
+| GPU (Non-Vectorized)  	| 26340 μs       	| nvcc, no debug symbols, simple for loop      	|
+| GPU (Vectorized)      	| 86 μs          	| nvcc, no debug symbols, parallel computation 	|
+
+As we can see, the non-vectorized GPU version is much slower than a simple CPU implementation, this is due to the fact that every for loop also calls a `cudaMemcpy` instruction, further slowing down the process.
+
+Calculating the block size and grid size for the 300 vectors, therefore passing everything all data at once reduces the run time by about 99.7% (or in other words, 1/300th of the original runtime, about the same as the amount of data).
+
+A further optimization is removing unnecessary calls to the `normalize` function, as per Khronos's recommendation, `reflect` (and `refract`) should use a normalized vector, if we normalize the vector in these functions, we introduce a huge overhead.
