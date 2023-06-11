@@ -212,8 +212,6 @@ __global__ void rainbowAirWater(double *wavelength, light_t *returnVal) {
   bool refraction = true;
   bool inWater = false;
 
-  returnVal[idx] = light;
-
   for (int i = 0; i < 4 && inSphere(sphere, intersection.l.coord) &&
                   intersection.intersects;
        ++i) {
