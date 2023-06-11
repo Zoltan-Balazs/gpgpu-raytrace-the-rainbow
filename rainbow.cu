@@ -190,38 +190,58 @@ __device__ double angleBetweenVectors(double3 lhs, double3 rhs) {
   return acos(cosA);
 }
 
-__global__ void test(sphere_t sphere, light_t light, float *returnVal) {
+__global__ void rainbowAirWater(double *wavelength, light_t *returnVal) {
+  sphere_t sphere = {{2, -2, 1}, 3};
+  light_t light = {{3, 2, -3}, {0, -1, 1}, wavelength[0]};
+
   intersection_t intersection = vectorSphereIntersection(sphere, light);
 
-  int i = 0;
   bool refraction = true;
+  bool inWater = false;
 
-  for (i = 0; i < 4 && inSphere(sphere, intersection.l.coord) &&
-              intersection.intersects;
+  for (int i = 0; i < 4 && inSphere(sphere, intersection.l.coord) &&
+                  intersection.intersects;
        ++i) {
-    float3 normalVector = calculateNormalVector(sphere, intersection.l.coord);
-    float angle = angleBetweenVectors(light.dir, normalVector);
+    double3 normalVector = calculateNormalVector(sphere, intersection.l.coord);
+    float angle = clamp(
+        angleBetweenVectors(light.dir, intersection.l.coord + normalVector), 0,
+        M_PI / 2);
+
+    double3 newVector;
     if (refraction) {
-      light.dir = refract(normalVector, intersection.l.dir, light.wavelength);
+      if (inWater) {
+        normalVector = -1 * normalVector;
+      }
+
+      newVector =
+          refract(normalVector, intersection.l.dir, light.wavelength, inWater);
+      inWater = true;
       refraction = false;
     } else {
-      light.dir = reflect(intersection.l.dir, normalVector);
+      newVector = reflect(intersection.l.dir, -1 * normalVector);
       refraction = true;
     }
-    light.coord = intersection.l.coord;
+    light = {intersection.l.coord, newVector, light.wavelength};
     intersection = vectorSphereIntersection(sphere, light);
   }
 
-  returnVal[0] = intersection.l.coord.x;
-  returnVal[1] = intersection.l.coord.y;
-  returnVal[2] = intersection.l.coord.z;
+  returnVal[0] = light;
+}
 }
 
 int main() {
-  sphere_t sphere = {{2, -2, 1}, 3};
+  const int WAVELENGTHS = 680 - 380;
+  double wavelength[WAVELENGTHS];
+  for (int i = 0; i < WAVELENGTHS; ++i) {
+    wavelength[i] = 380 + i;
+  }
 
-  dim3 dimBlock(blocksize, 1);
-  dim3 dimGrid(1, 1);
+  double *gpu_wavelength;
+
+  dim3 block_size(1, 1);
+  dim3 grid_size(1, 1);
+
+  light_t *cpu_results, *gpu_results;
 
   float *hostVal = 0;
   float *val;
@@ -234,23 +254,31 @@ int main() {
   }
 
   cudaError =
-      cudaHostAlloc((void **)&hostVal, 3 * sizeof(float), cudaHostAllocDefault);
+      cudaHostAlloc((void **)&cpu_results, WAVELENGTHS * sizeof(light_t),
+                    cudaHostAllocDefault);
   if (cudaError != cudaSuccess) {
     std::cout << "Error while allocating pinned memory: "
               << cudaGetErrorString(cudaError) << std::endl;
     exit(1);
   }
-  cudaMemcpy(val, hostVal, 3 * sizeof(float), cudaMemcpyHostToDevice);
+
+  cudaError = cudaHostAlloc((void **)&gpu_wavelength,
+                            WAVELENGTHS * sizeof(double), cudaHostAllocDefault);
+  if (cudaError != cudaSuccess) {
+    std::cout << "Error while allocating pinned memory: "
+              << cudaGetErrorString(cudaError) << std::endl;
+    exit(1);
+  }
+  cudaMemcpy(gpu_wavelength, wavelength, WAVELENGTHS * sizeof(double),
+             cudaMemcpyHostToDevice);
 
   auto tS = std::chrono::high_resolution_clock::now();
 
-  for (int i = 380; i < 740; ++i) {
-    test<<<dimGrid, dimBlock>>>(sphere, {3, 2, -3, 0, -1, 1, (double)i}, val);
+  for (int i = 0; i < WAVELENGTHS; ++i) {
+    rainbowAirWater<<<block_size, grid_size>>>(&gpu_wavelength[i], gpu_results);
 
-    cudaMemcpy(hostVal, val, 3 * sizeof(float), cudaMemcpyDeviceToHost);
-
-    std::cout << "(" << hostVal[0] << ", " << hostVal[1] << ", " << hostVal[2]
-              << ")\n";
+    cudaMemcpy(&cpu_results[i], gpu_results, sizeof(light_t),
+               cudaMemcpyDeviceToHost);
   }
 
   auto diff = std::chrono::high_resolution_clock::now() - tS;
@@ -258,6 +286,21 @@ int main() {
                    diff)
                    .count()
             << std::endl;
+
+  // for (int i = 0; i < WAVELENGTHS; ++i) {
+  //   std::cout << cpu_results[i].wavelength << "nm (" <<
+  //   cpu_results[i].coord.x
+  //             << ", " << cpu_results[i].coord.y << ", "
+  //             << cpu_results[i].coord.z << ") "
+  //             << " -> "
+  //             << "(" << cpu_results[i].dir.x << ", " << cpu_results[i].dir.y
+  //             << ", " << cpu_results[i].dir.z << ")" << std::endl;
+  // }
+
+  cudaFreeHost(cpu_rgb);
+  cudaFreeHost(cpu_results);
+  cudaFreeHost(gpu_wavelength);
+  cudaFree(gpu_results);
 
   return EXIT_SUCCESS;
 }
