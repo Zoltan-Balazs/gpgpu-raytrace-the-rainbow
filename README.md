@@ -19,4 +19,17 @@ sudo pacman -S --needed base-devel cuda cmake
 
 ## How to build
 
+### GPU
 Simply run `build.sh` if you are on Linux, the resulting executable will be located in the `build` directory, named `gpgpu_raytrace_rainbow`
+
+### CPU
+Switch over to the `cpu-cpp` branch and copy over the `CMakeLists.txt` file or change the following lines in the `main` branch's `CMakeLists.txt`:
+```diff
+- 2 project(gpgpu_raytrace_rainbow CUDA)
++ 2 project(gpgpu_raytrace_rainbow)
+...
+- 8 add_executable(gpgpu_raytrace_rainbow rainbow.cu stb_image_write.h)
++ 8 add_executable(gpgpu_raytrace_rainbow rainbow.cpp)
+...
+- 12 set_target_properties(gpgpu_raytrace_rainbow PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+```
