@@ -227,6 +227,63 @@ __global__ void rainbowAirWater(double *wavelength, light_t *returnVal) {
 
   returnVal[0] = light;
 }
+
+__global__ void wavelengthToRGB(double *wavelength, int3 *rgb) {
+  double gamma = 0.80;
+  double intensityMax = 255;
+
+  double factor;
+  float3 curr_rgb;
+
+  if ((wavelength[0] >= 380) && (wavelength[0] < 440)) {
+    curr_rgb.x = -(wavelength[0] - 440) / (440 - 380);
+    curr_rgb.y = 0.0;
+    curr_rgb.z = 1.0;
+  } else if ((wavelength[0] >= 440) && (wavelength[0] < 490)) {
+    curr_rgb.x = 0.0;
+    curr_rgb.y = (wavelength[0] - 440) / (490 - 440);
+    curr_rgb.z = 1.0;
+  } else if ((wavelength[0] >= 490) && (wavelength[0] < 510)) {
+    curr_rgb.x = 0.0;
+    curr_rgb.y = 1.0;
+    curr_rgb.z = -(wavelength[0] - 510) / (510 - 490);
+  } else if ((wavelength[0] >= 510) && (wavelength[0] < 580)) {
+    curr_rgb.x = (wavelength[0] - 510) / (580 - 510);
+    curr_rgb.y = 1.0;
+    curr_rgb.z = 0.0;
+  } else if ((wavelength[0] >= 580) && (wavelength[0] < 645)) {
+    curr_rgb.x = 1.0;
+    curr_rgb.y = -(wavelength[0] - 645) / (645 - 580);
+    curr_rgb.z = 0.0;
+  } else if ((wavelength[0] >= 645) && (wavelength[0] < 781)) {
+    curr_rgb.x = 1.0;
+    curr_rgb.y = 0.0;
+    curr_rgb.z = 0.0;
+  } else {
+    curr_rgb.x = 0.0;
+    curr_rgb.y = 0.0;
+    curr_rgb.z = 0.0;
+  }
+
+  if ((wavelength[0] >= 380) && (wavelength[0] < 420)) {
+    factor = 0.3 + 0.7 * (wavelength[0] - 380) / (420 - 380);
+  } else if ((wavelength[0] >= 420) && (wavelength[0] < 701)) {
+    factor = 1.0;
+  } else if ((wavelength[0] >= 701) && (wavelength[0] < 781)) {
+    factor = 0.3 + 0.7 * (780 - wavelength[0]) / (780 - 700);
+  } else {
+    factor = 0.0;
+  }
+
+  rgb[0] = {curr_rgb.x == 0
+                ? 0
+                : (int)round(intensityMax * pow(curr_rgb.x * factor, gamma)),
+            curr_rgb.y == 0
+                ? 0
+                : (int)round(intensityMax * pow(curr_rgb.y * factor, gamma)),
+            curr_rgb.z == 0
+                ? 0
+                : (int)round(intensityMax * pow(curr_rgb.z * factor, gamma))};
 }
 
 int main() {
@@ -243,10 +300,9 @@ int main() {
 
   light_t *cpu_results, *gpu_results;
 
-  float *hostVal = 0;
-  float *val;
+  int3 *cpu_rgb;
 
-  cudaError_t cudaError = cudaMalloc((void **)&val, 3 * sizeof(float));
+  cudaError_t cudaError = cudaMalloc((void **)&gpu_results, sizeof(light_t));
   if (cudaError != cudaSuccess) {
     std::cout << "Error while allocating memory on GPU: "
               << cudaGetErrorString(cudaError) << std::endl;
@@ -272,6 +328,14 @@ int main() {
   cudaMemcpy(gpu_wavelength, wavelength, WAVELENGTHS * sizeof(double),
              cudaMemcpyHostToDevice);
 
+  cudaError = cudaHostAlloc((void **)&cpu_rgb, WAVELENGTHS * sizeof(int3),
+                            cudaHostAllocDefault);
+  if (cudaError != cudaSuccess) {
+    std::cout << "Error while allocating pinned memory: "
+              << cudaGetErrorString(cudaError) << std::endl;
+    exit(1);
+  }
+
   auto tS = std::chrono::high_resolution_clock::now();
 
   for (int i = 0; i < WAVELENGTHS; ++i) {
@@ -296,6 +360,15 @@ int main() {
   //             << "(" << cpu_results[i].dir.x << ", " << cpu_results[i].dir.y
   //             << ", " << cpu_results[i].dir.z << ")" << std::endl;
   // }
+
+  for (int i = 0; i < WAVELENGTHS; ++i) {
+    wavelengthToRGB<<<block_size, grid_size>>>(gpu_wavelength, &cpu_rgb[i]);
+  }
+
+  for (int i = 0; i < WAVELENGTHS; ++i) {
+    std::cout << cpu_rgb[i].x << " " << cpu_rgb[i].y << " " << cpu_rgb[i].z
+              << std::endl;
+  }
 
   cudaFreeHost(cpu_rgb);
   cudaFreeHost(cpu_results);
