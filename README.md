@@ -50,3 +50,14 @@ As we can see, the non-vectorized GPU version is much slower than a simple CPU i
 Calculating the block size and grid size for the 300 vectors, therefore passing everything all data at once reduces the run time by about 99.7% (or in other words, 1/300th of the original runtime, about the same as the amount of data).
 
 A further optimization is removing unnecessary calls to the `normalize` function, as per Khronos's recommendation, `reflect` (and `refract`) should use a normalized vector, if we normalize the vector in these functions, we introduce a huge overhead.
+
+## Tested On
+
+The following generous people have aided me in testing that the program runs on a variety of different hardware configurations: 
+
+| Person         	| CPU               	| GPU                 	            | OS                         	|
+|----------------	|-------------------	|---------------------  	        |----------------------------	|
+| Zoltán Balázs  	| Intel Core i7-8700K   | Nvidia GeForce RTX 2080 8GB 	    | Arch Linux (6.3.5-arch1-1) 	|
+| Dóra Gregorics 	| AMD Ryzen 5 2600X 	| Nvidia GeForce RTX 2060 6GB 	    | Windows 10 (22H2)          	|
+| Márton Petes   	| AMD Ryzen 5 3600  	| Nvidia GeForce GTX 1060 6GB 	    | NixOS 23.11 (6.3.4)        	|
+| Márton Petes   	| Intel Core i5-5200U   | Nvidia GeForce 840M 2GB 	        | NixOS 23.05 (6.0.10-zen2)  	|
