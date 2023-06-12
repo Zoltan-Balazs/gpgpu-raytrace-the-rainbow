@@ -1,6 +1,16 @@
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #include <chrono>
 #include <cmath>
 #include <iostream>
+
+#define CHANNEL_NUM 3
+
+typedef struct {
+  int x;
+  int y;
+  int z;
+} int3;
 
 typedef struct {
   double x;
@@ -236,7 +246,7 @@ light_t rainbowAirWater(double wavelength) {
   return light;
 }
 
-int *wavelengthToRGB(double wavelength) {
+int3 wavelengthToRGB(double wavelength) {
   double gamma = 0.80;
   double intensityMax = 255;
 
@@ -283,39 +293,46 @@ int *wavelengthToRGB(double wavelength) {
     factor = 0.0;
   }
 
-  return new int[3]{
-      curr_rgb.x == 0
-          ? 0
-          : (int)round(intensityMax * pow(curr_rgb.x * factor, gamma)),
-      curr_rgb.y == 0
-          ? 0
-          : (int)round(intensityMax * pow(curr_rgb.y * factor, gamma)),
-      curr_rgb.z == 0
-          ? 0
-          : (int)round(intensityMax * pow(curr_rgb.z * factor, gamma))};
+  return {curr_rgb.x == 0
+              ? 0
+              : (int)round(intensityMax * pow(curr_rgb.x * factor, gamma)),
+          curr_rgb.y == 0
+              ? 0
+              : (int)round(intensityMax * pow(curr_rgb.y * factor, gamma)),
+          curr_rgb.z == 0
+              ? 0
+              : (int)round(intensityMax * pow(curr_rgb.z * factor, gamma))};
 }
 
 int main() {
+  // Wavelengths from 380nm to 680nm on the CPU
   const int WAVELENGTHS = 680 - 380;
   double wavelength[WAVELENGTHS];
   for (int i = 0; i < WAVELENGTHS; ++i) {
     wavelength[i] = 380 + i;
   }
 
+  // Variables for result of refracted light and wavelength to RGB conversion
+  int3 rgb[WAVELENGTHS];
   light_t results[WAVELENGTHS];
 
-  auto tS = std::chrono::high_resolution_clock::now();
+  // auto tS = std::chrono::high_resolution_clock::now();
 
+  // Run the functions for rainbow vector calculation & wavelength to RGB
+  // conversion
   for (int i = 380; i < 680; ++i) {
     results[i - 380] = rainbowAirWater(wavelength[i - 380]);
+    rgb[i - 380] = wavelengthToRGB(wavelength[i - 380]);
   }
 
-  auto diff = std::chrono::high_resolution_clock::now() - tS;
-  std::cout << (ulong)std::chrono::duration_cast<std::chrono::microseconds>(
-                   diff)
-                   .count()
-            << std::endl;
+  // Print the timing
+  // auto diff = std::chrono::high_resolution_clock::now() - tS;
+  // std::cout << (ulong)std::chrono::duration_cast<std::chrono::microseconds>(
+  //                  diff)
+  //                  .count()
+  //           << std::endl;
 
+  // Print the refraction, reflection results
   // for (int i = 0; i < WAVELENGTHS; ++i) {
   //   std::cout << results[i].wavelength << "nm (" << results[i].coord.x << ","
   //             << results[i].coord.y << ", " << results[i].coord.z << ") "
@@ -323,6 +340,63 @@ int main() {
   //             << "(" << results[i].dir.x << ", " << results[i].dir.y << ", "
   //             << results[i].dir.z << ")" << std::endl;
   // }
+
+  /* Calculate the image, since we are using the z = -3.0 plane, our x values
+   * will range from -1.94345 (Ultraviolet light) to -1.9854 (Red light)
+   * Since this change from -1.94345 to -1.9854 is 300 (the number of
+   * wavelengths), we can calculate the resolution for -1.90 to -2.00, which is
+   * 715 300 is used for the height, since we take 3 pixel at just before 2.0,
+   * at 2.0 and just after 2.0 for the y value
+   */
+  const int WIDTH = 715;
+  const int HEIGHT = 300;
+
+  unsigned char *pixels = new unsigned char[WIDTH * HEIGHT * CHANNEL_NUM];
+  memset(pixels, 255, WIDTH * HEIGHT * CHANNEL_NUM * sizeof(unsigned char));
+
+  double zPlane = -3.0;
+  // Used for indexing the pixel array
+  int idx = 0;
+  for (int j = 0; j < HEIGHT; ++j) {
+    for (int i = 0; i < WIDTH; ++i) {
+      // Current x and y values based on the resolution we specified
+      double currentX = -1.90 + (i * -0.000140161);
+      double currentY = 1.9 + (int)(j / 100) * 0.1;
+      double epsilon = 0.001;
+      bool inRange = false;
+      /* Iterate over the vector results and find the vector that intersects
+       * the plane at the current x and y values (if any) */
+      for (int k = 0; k < WAVELENGTHS; ++k) {
+        /* t is used for the parametric equation of the line
+         * we need to calculate the t such that
+         * results[k].coord.z + t * results[k].dir.z = -3.0 */
+        double t = (zPlane - results[k].coord.z) / results[k].dir.z;
+        /* If for the given t, the x and y values are within epsilon of the
+         * current calculated x and y values, we take the wavelength of the
+         * vector and convert it to RGB */
+        if (abs(results[k].coord.x + t * results[k].dir.x - currentX) <=
+                epsilon &&
+            abs(results[k].coord.y + t * results[k].dir.y - currentY) <=
+                epsilon) {
+          pixels[idx++] = rgb[(int)results[k].wavelength - 380].x;
+          pixels[idx++] = rgb[(int)results[k].wavelength - 380].y;
+          pixels[idx++] = rgb[(int)results[k].wavelength - 380].z;
+          inRange = true;
+          break;
+        }
+      }
+      if (!inRange) {
+        // Else we use white
+        pixels[idx++] = 255;
+        pixels[idx++] = 255;
+        pixels[idx++] = 255;
+      }
+    }
+  }
+
+  // Write the image to the file
+  stbi_write_png("rainbow.png", WIDTH, HEIGHT, CHANNEL_NUM, pixels,
+                 WIDTH * CHANNEL_NUM);
 
   return EXIT_SUCCESS;
 }

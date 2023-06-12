@@ -29,7 +29,7 @@ Switch over to the `cpu-cpp` branch and copy over the `CMakeLists.txt` file or c
 + 2 project(gpgpu_raytrace_rainbow)
 ...
 - 8 add_executable(gpgpu_raytrace_rainbow rainbow.cu stb_image_write.h)
-+ 8 add_executable(gpgpu_raytrace_rainbow rainbow.cpp)
++ 8 add_executable(gpgpu_raytrace_rainbow rainbow.cpp stb_image_write.h)
 ...
 - 12 set_target_properties(gpgpu_raytrace_rainbow PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 ```
