@@ -4,7 +4,7 @@
 #include <cmath>
 #include <iostream>
 
-#define CHANNEL_NUM 3
+#define CHANNEL_NUM 4
 typedef struct {
   double3 coord;
   double r;
@@ -407,7 +407,7 @@ int main() {
   const int HEIGHT = 300;
 
   unsigned char *pixels = new unsigned char[WIDTH * HEIGHT * CHANNEL_NUM];
-  memset(pixels, 255, WIDTH * HEIGHT * CHANNEL_NUM * sizeof(unsigned char));
+  memset(pixels, 0, WIDTH * HEIGHT * CHANNEL_NUM * sizeof(unsigned char));
 
   double zPlane = -3.0;
   // Used for indexing the pixel array
@@ -436,15 +436,17 @@ int main() {
           pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].x;
           pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].y;
           pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].z;
+          pixels[idx++] = 255;
           inRange = true;
           break;
         }
       }
       if (!inRange) {
         // Else we use white
-        pixels[idx++] = 255;
-        pixels[idx++] = 255;
-        pixels[idx++] = 255;
+        pixels[idx++] = 0;
+        pixels[idx++] = 0;
+        pixels[idx++] = 0;
+        pixels[idx++] = 0;
       }
     }
   }
