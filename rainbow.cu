@@ -302,21 +302,24 @@ __global__ void wavelengthToRGB(double *wavelength, int3 *rgb) {
 }
 
 int main() {
+  // Wavelengths from 380nm to 680nm on the CPU
   const int WAVELENGTHS = 680 - 380;
   double wavelength[WAVELENGTHS];
   for (int i = 0; i < WAVELENGTHS; ++i) {
     wavelength[i] = 380 + i;
   }
 
+  // Variables for use on the GPU & CPU
   double *gpu_wavelength;
+  light_t *cpu_results, *gpu_results;
+  int3 *cpu_rgb, *gpu_rgb;
 
-  dim3 block_size(4, 4);
+  // Grid & Block size for the kernel, 3 * 4 * 5 * 5 = 300 threads, the 300
+  // wavelengths
+  dim3 block_size(3, 4);
   dim3 grid_size(5, 5);
 
-  light_t *cpu_results, *gpu_results;
-
-  int3 *cpu_rgb;
-
+  // Allocate memory on the GPU & CPU
   cudaError_t cudaError =
       cudaMalloc((void **)&gpu_results, WAVELENGTHS * sizeof(light_t));
   if (cudaError != cudaSuccess) {
@@ -334,8 +337,8 @@ int main() {
     exit(1);
   }
 
-  cudaError = cudaHostAlloc((void **)&gpu_wavelength,
-                            WAVELENGTHS * sizeof(double), cudaHostAllocDefault);
+  cudaError =
+      cudaMalloc((void **)&gpu_wavelength, WAVELENGTHS * sizeof(double));
   if (cudaError != cudaSuccess) {
     std::cout << "Error while allocating pinned memory: "
               << cudaGetErrorString(cudaError) << std::endl;
@@ -343,6 +346,13 @@ int main() {
   }
   cudaMemcpy(gpu_wavelength, wavelength, WAVELENGTHS * sizeof(double),
              cudaMemcpyHostToDevice);
+
+  cudaError = cudaMalloc((void **)&gpu_rgb, WAVELENGTHS * sizeof(int3));
+  if (cudaError != cudaSuccess) {
+    std::cout << "Error while allocating pinned memory: "
+              << cudaGetErrorString(cudaError) << std::endl;
+    exit(1);
+  }
 
   cudaError = cudaHostAlloc((void **)&cpu_rgb, WAVELENGTHS * sizeof(int3),
                             cudaHostAllocDefault);
@@ -352,19 +362,24 @@ int main() {
     exit(1);
   }
 
-  auto tS = std::chrono::high_resolution_clock::now();
+  // Clock for timing
+  // auto tS = std::chrono::high_resolution_clock::now();
 
+  // Run the kernel for the rainbow vector calculation
   rainbowAirWater<<<block_size, grid_size>>>(gpu_wavelength, gpu_results);
 
+  // Copy back the result to the CPU
   cudaMemcpy(cpu_results, gpu_results, WAVELENGTHS * sizeof(light_t),
              cudaMemcpyDeviceToHost);
 
-  auto diff = std::chrono::high_resolution_clock::now() - tS;
-  std::cout << (ulong)std::chrono::duration_cast<std::chrono::microseconds>(
-                   diff)
-                   .count()
-            << std::endl;
+  // Print the timing
+  // auto diff = std::chrono::high_resolution_clock::now() - tS;
+  // std::cout << (ulong)std::chrono::duration_cast<std::chrono::microseconds>(
+  //                  diff)
+  //                  .count()
+  //           << std::endl;
 
+  // Print the refraction, reflection results
   // for (int i = 0; i < WAVELENGTHS; ++i) {
   //   std::cout << cpu_results[i].wavelength << "nm (" <<
   //   cpu_results[i].coord.x
@@ -375,12 +390,12 @@ int main() {
   //             << ", " << cpu_results[i].dir.z << ")" << std::endl;
   // }
 
-  wavelengthToRGB<<<block_size, grid_size>>>(gpu_wavelength, cpu_rgb);
+  // Run the kernel for the wavelength -> RGB conversion
+  wavelengthToRGB<<<block_size, grid_size>>>(gpu_wavelength, gpu_rgb);
 
-  unsigned char *pixels =
-      new unsigned char[WAVELENGTHS * WAVELENGTHS * CHANNEL_NUM];
-  memset(pixels, 255,
-         WAVELENGTHS * WAVELENGTHS * CHANNEL_NUM * sizeof(unsigned char));
+  // Copy back the result to the CPU
+  cudaMemcpy(cpu_rgb, gpu_rgb, WAVELENGTHS * sizeof(int3),
+             cudaMemcpyDeviceToHost);
 
   int idx = 0;
   for (int i = 0; i < WAVELENGTHS; ++i) {
@@ -391,13 +406,16 @@ int main() {
     }
   }
 
-  stbi_write_png("rainbow.png", WAVELENGTHS, WAVELENGTHS, CHANNEL_NUM, pixels,
-                 WAVELENGTHS * CHANNEL_NUM);
+  // Write the image to the file
+  stbi_write_png("rainbow.png", WIDTH, HEIGHT, CHANNEL_NUM, pixels,
+                 WIDTH * CHANNEL_NUM);
 
+  // Free up memory
   cudaFreeHost(cpu_rgb);
   cudaFreeHost(cpu_results);
   cudaFreeHost(gpu_wavelength);
   cudaFree(gpu_results);
+  cudaFree(gpu_rgb);
 
   return EXIT_SUCCESS;
 }
