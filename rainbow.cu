@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <ostream>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #include <chrono>
@@ -415,31 +416,33 @@ int main() {
   int idx = 0;
   for (int j = 0; j < HEIGHT; ++j) {
     for (int i = 0; i < WIDTH; ++i) {
-      /* If we are in the y = 2.0 slice and our x value is between -1.94345 and
-       * -1.9854 */
-      if (100 <= j && j < 200 && 310 <= i && i < 610) {
-        double epsilon = 0.001;
-        // We calculate our x value with the resolution we have
-        double currentX = -1.90 + (i * -0.000140161);
-        /* Iterate over the vector results and find the vector that intersects
-         * the plane at the current x value */
-        for (int k = 0; k < WAVELENGTHS; ++k) {
-          /* t is used for the parametric equation of the line
-           * we need to calculate the t such that
-           * cpu_results[k].coord.z + t * cpu_results[k].dir.z = -3.0 */
-          double t = (zPlane - cpu_results[k].coord.z) / cpu_results[k].dir.z;
-          /* If for the given t, the x value is within epsilon of the current
-           * calculated x we take the wavelength of the vector and convert it to
-           * RGB */
-          if (abs(cpu_results[k].coord.x + t * cpu_results[k].dir.x -
-                  currentX) <= epsilon) {
-            pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].x;
-            pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].y;
-            pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].z;
-            break;
-          }
+      // Current x and y values based on the resolution we specified
+      double currentX = -1.90 + (i * -0.000140161);
+      double currentY = 1.9 + (int)(j / 100) * 0.1;
+      double epsilon = 0.001;
+      bool inRange = false;
+      /* Iterate over the vector results and find the vector that intersects
+       * the plane at the current x and y values (if any) */
+      for (int k = 0; k < WAVELENGTHS; ++k) {
+        /* t is used for the parametric equation of the line
+         * we need to calculate the t such that
+         * cpu_results[k].coord.z + t * cpu_results[k].dir.z = -3.0 */
+        double t = (zPlane - cpu_results[k].coord.z) / cpu_results[k].dir.z;
+        /* If for the given t, the x and y values are within epsilon of the
+         * current calculated x and y values, we take the wavelength of the
+         * vector and convert it to RGB */
+        if (abs(cpu_results[k].coord.x + t * cpu_results[k].dir.x - currentX) <=
+                epsilon &&
+            abs(cpu_results[k].coord.y + t * cpu_results[k].dir.y - currentY) <=
+                epsilon) {
+          pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].x;
+          pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].y;
+          pixels[idx++] = cpu_rgb[(int)cpu_results[k].wavelength - 380].z;
+          inRange = true;
+          break;
         }
-      } else {
+      }
+      if (!inRange) {
         // Else we use white
         pixels[idx++] = 255;
         pixels[idx++] = 255;
