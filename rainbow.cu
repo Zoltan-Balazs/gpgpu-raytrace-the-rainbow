@@ -5,6 +5,7 @@
 #include <iostream>
 
 #define CHANNEL_NUM 4
+
 typedef struct {
   double3 coord;
   double r;
